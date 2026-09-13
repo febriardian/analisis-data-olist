@@ -49,7 +49,7 @@ def create_rfm_df(df):
 
 # 3. LOAD DATA
 def load_data():
-    df = pd.read_csv("main_data.csv")
+    df = pd.read_csv("Dashboard/main_data.csv")
     df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
 
     df_2017 = df[df['order_purchase_timestamp'].dt.year == 2017]
