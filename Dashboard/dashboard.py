@@ -170,15 +170,15 @@ ax[2].set_ylabel(None)
 plt.tight_layout()
 st.pyplot(fig)
 st.markdown("""
-    <hr style="border:1px solid #e6e6e6; margin-top: 50px;">
+    <hr style="border:1px solid #e6e6e6; margin-top: 10px; margin-bottom: 10px;">
     <div style="text-align: center; color: #888888; padding-bottom: 20px;">
         <p style="font-size: 16px; margin-bottom: 5px; font-weight: bold;">
             E-Commerce Data Analysis Project
         </p>
-        <p style="font-size: 14px; margin-bottom: 5px;">
+        <p style="font-size: 12px; margin-bottom: 5px;">
             Created by: <b>Febri Nur Ardian Syah</b> | Dicoding Academy
         </p>
-        <p style="font-size: 13px;">
+        <p style="font-size: 11px;">
             © September 2026. All Rights Reserved.
         </p>
     </div>
