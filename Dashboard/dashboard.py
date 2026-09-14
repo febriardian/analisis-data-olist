@@ -4,7 +4,7 @@ import seaborn as sns
 import streamlit as st
 
 # 1. SET UP HALAMAN & TEMA
-st.set_page_config(page_title="E-Commerce Analytics", layout="wide")
+st.set_page_config(page_title="Olist E-Commerce Dashboard", page_icon="🛍️", layout="wide", initial_sidebar_state="expanded")
 sns.set(style="dark")
 colors = ["#72BCD4", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
 
@@ -18,7 +18,7 @@ def create_time_pivot(df):
     if 'order_day' not in df.columns:
         df['order_day'] = df['order_purchase_timestamp'].dt.day_name()
     if 'order_hour' not in df.columns:
-        df['order_hour'] = df['order_purchase_timestamp'].dt.hour()
+        df['order_hour'] = df['order_purchase_timestamp'].dt.hour
     time_pivot = df.groupby(['order_day', 'order_hour']) ['order_id'].nunique().unstack()
     time_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     time_pivot = time_pivot.reindex(time_days)
@@ -48,6 +48,7 @@ def create_rfm_df(df):
     return rfm_df
 
 # 3. LOAD DATA
+@st.cache_data
 def load_data():
     df = pd.read_csv("Dashboard/main_data.csv")
     df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
@@ -57,13 +58,53 @@ def load_data():
 
 all_df = load_data()
 
-# 4. UI DASHBOARD
-st.title("E-Commerce Performance Dashboard (2017)")
-st.markdown("---")
+# 4. FITUR INTERAKTIF
+with st.sidebar:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image("Dashboard/logo.webp", width=120)
+    #st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # 4.2 Filter Tanggal
+    min_date = all_df["order_purchase_timestamp"].min().date()
+    max_date = all_df["order_purchase_timestamp"].max().date()
 
-total_revenue = all_df['price'].sum()
-total_orders = all_df['order_id'].nunique()
-total_customers = all_df['customer_unique_id'].nunique()
+    start_date, end_date = st.date_input(
+        label='Pilih Rentang Waktu',
+        min_value=min_date,
+        max_value=max_date,
+        value=[min_date, max_date]
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 4.3 Filter Demografi
+    state_list = all_df["customer_state"].dropna().unique().tolist()
+    state_list.sort()
+
+    default_states = ["SP", "RJ", "MG", "RS", "PR"]
+
+    selected_states = st.multiselect(
+        label='Pilih Negara Bagian',
+        options=state_list,
+        default=default_states
+    )
+
+# Menerapkan filter pada dataframe utama
+main_df = all_df[
+    (all_df["order_purchase_timestamp"].dt.date >= start_date) &
+    (all_df["order_purchase_timestamp"].dt.date <= end_date) &
+    (all_df["customer_state"].isin(selected_states))
+    ]
+
+# 5. UI DASHBOARD
+st.title("🛍️ Olist E-Commerce Performance Dashboard (2017)")
+st.markdown("Selamat datang di *Dashboard* Analisis Data Olist. Dashboard ini menyajikan ringkasan performa penjualan, demografi pelanggan, dan tren transaksi.")
+st.divider()
+
+total_revenue = main_df['price'].sum()
+total_orders = main_df['order_id'].nunique()
+total_customers = main_df['customer_unique_id'].nunique()
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -77,7 +118,7 @@ st.markdown("---")
 
 # BAGIAN 1: PERFORMA PRODUK
 st.subheader("1. Kategori Produk Berpendapatan Tertinggi")
-product_df = create_product_df(all_df)
+product_df = create_product_df(main_df)
 
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.barplot(x="price", y="product_category_name", data=product_df, palette=colors, ax=ax)
@@ -93,7 +134,7 @@ st.subheader("2. Pola Waktu Transaksi & Metode Pembayaran")
 
 # GRAFIK 1: HEATMAP POLA TRANSAKSI
 st.markdown("**2.1 Kepadatan Transaki**")
-time_pivot = create_time_pivot(all_df)
+time_pivot = create_time_pivot(main_df)
 
 fig, ax = plt.subplots(figsize=(12, 6))
 sns.heatmap(time_pivot, cmap="Blues", linewidths=.5, ax=ax)
@@ -104,7 +145,7 @@ st.pyplot(fig)
 
 # GRAFIK 2: BAR CHART METODE PEMBAYARAN
 st.markdown("**2.2 Metode Pembayaran Paling Populer**")
-payment_df = create_payment_df(all_df)
+payment_df = create_payment_df(main_df)
 
 fig, ax = plt.subplots(figsize=(10, 5))
 sns.barplot(x=payment_df.values, y=payment_df.index, palette=colors, ax=ax)
@@ -116,7 +157,7 @@ st.markdown("---")
 
 # BAGIAN 3: DEMOGRAFI PELANGGAN
 st.subheader("3. Peta Kekuatan Pasar (Top 5 Negara Bagian)")
-revenue_state, customer_state = create_demographic_df(all_df)
+revenue_state, customer_state = create_demographic_df(main_df)
 
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
 
@@ -137,7 +178,7 @@ st.markdown("---")
 
 # BAGIAN 4: RFM ANALYSIS
 st.subheader("4. RFM Analysis")
-rfm_df = create_rfm_df(all_df)
+rfm_df = create_rfm_df(main_df)
 
 top_recency = rfm_df.sort_values(by='Recency', ascending=True).head(5)
 top_frequency = rfm_df.sort_values(by='Frequency', ascending=False).head(5)
@@ -170,7 +211,7 @@ ax[2].set_ylabel(None)
 plt.tight_layout()
 st.pyplot(fig)
 st.markdown("""
-    <hr style="border:1px solid #e6e6e6; margin-top: 10px; margin-bottom: 10px;">
+    <hr style="border:1px solid #e6e6e6; margin-top: 15px; margin-bottom: 15px;">
     <div style="text-align: center; color: #888888; padding-bottom: 20px;">
         <p style="font-size: 16px; margin-bottom: 5px; font-weight: bold;">
             E-Commerce Data Analysis Project
